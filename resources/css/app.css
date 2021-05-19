@@ -1,0 +1,5 @@
+.pagination > span.current,
+.pagination > a.current {
+  background: #3aaced;
+  color: #fff;
+}
