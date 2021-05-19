@@ -1,61 +1,151 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400"></a></p>
 
-<p align="center">
-<a href="https://travis-ci.org/laravel/framework"><img src="https://travis-ci.org/laravel/framework.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Cloning Repository
 
-## About Laravel
+```
+git clone https://github.com/ravelinodecastro/laravel-jwt.git
+```
+```
+composer install
+```
+Create .env and copy all content from .env.exemple and paste there and then run:
+```
+php artisan key:generate
+```
+Create a database and set the conection values into .env
+```
+php artisan migrate
+```
+```
+php artisan serve
+```
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Starting with a new project
+Assuming that you already have laravel installed with the database configuration, let start by installing JWT.
+```
+composer require tymon/jwt-auth
+```
+```
+php artisan vendor:publish --provider="Tymon\JWTAuth\Providers\LaravelServiceProvider"
+```
+```
+php artisan jwt:secret
+```
+In config/auth.php set defaults guard to api and in guards api set drive to jwt
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Now import JWTSubject in user model and some JWT methods in the user model.
+```
+<?php
 
-## Learning Laravel
+namespace App\Models;
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 1500 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
-## Laravel Sponsors
+class User extends Authenticatable implements JWTSubject
+{
+    use HasFactory;
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+    ];
 
-### Premium Partners
+    /**
+     * The attributes that should be hidden for arrays.
+     *
+     * @var array
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[OP.GG](https://op.gg)**
+    /**
+     * The attributes that should be cast to native types.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+    ];
 
-## Contributing
+       /**
+     * Get the identifier that will be stored in the subject claim of the JWT.
+     *
+     * @return mixed
+     */
+    public function getJWTIdentifier() {
+        return $this->getKey();
+    }
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+    /**
+     * Return a key value array, containing any custom claims to be added to the JWT.
+     *
+     * @return array
+     */
+    public function getJWTCustomClaims() {
+        return [];
+    }
 
-## Code of Conduct
+}
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```
 
-## Security Vulnerabilities
+Now, you need to create your controllers, routes and views. I'll skip this steps, you can check it on this repository.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+You will need to create a middleware, in app/Http/Middleware
 
-## License
+create AddToken.php
+```
+<?php
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+namespace App\Http\Middleware;
+use Closure;
+use Illuminate\Http\Request;
+
+class AddToken
+{
+    public function handle($request, Closure $next){
+        $token = isset($_COOKIE["jwt_token"])?$_COOKIE["jwt_token"]:"";
+        $request->headers->set("Authorization", "Bearer $token");
+        $response = $next($request);
+        return $response;
+    }
+}
+
+```
+And then import it on: app/Http/Kernel.php in $middleware this:  \App\Http\Middleware\AddToken::class,
+
+
+In the front-end you only need to call something like this:
+```
+async function login(){
+      await fetch('/api/login', {
+          method: 'POST',
+          headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({email: document.getElementById('email').value, password: document.getElementById('password').value})
+      })
+      .then((res)=>{ return res.json(); })
+      .then((data)=>{
+          document.cookie = `jwt_token= ${data.data.access_token}`;
+          window.open("/", "_self");
+      })
+      .catch((error)=>{
+          alert(error)
+          console.error(error)
+      })
+
+  }
+```
